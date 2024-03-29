@@ -1,4 +1,5 @@
 version: 0.2
+
 phases:
   install:
     runtime-versions:
@@ -6,6 +7,7 @@ phases:
     commands:
       - echo "Installing dependencies..."
       - pip install -r requirements.txt -t lib
+
   build:
     commands:
       - echo "Zipping deployment package..."
@@ -13,10 +15,23 @@ phases:
       - zip -r9 ../deployment_package.zip .
       - cd ..
       - zip -g deployment_package.zip lambda_function.py
+
   post_build:
     commands:
-      - echo "Uploading to S3..."
+      - echo "Uploading deployment package to S3..."
       - aws s3 cp deployment_package.zip s3://s3-doordash-landing/
+
       - echo "Updating Lambda function via S3..."
-      - aws lambda update-function-code --function-name doordash_transform --s3-bucket s3-doordash-landing --s3-key deployment_package.zip
+      - aws lambda update-function-code \
+          --function-name doordash_transform \
+          --s3-bucket s3-doordash-landing \
+          --s3-key deployment_package.zip
       - echo "Deployment complete!"
+
+      - echo "Creating Lambda layer from python-dotenv package..."
+      - aws lambda publish-layer-version \
+          --layer-name my-python-dotenv-layer \
+          --description "Lambda layer with python-dotenv" \
+          --content S3Bucket=s3-doordash-landing,S3Key=python-dotenv.zip \
+          --compatible-runtimes python3.11
+      - echo "Lambda layer creation complete!"
