@@ -27,7 +27,7 @@ phases:
       - echo "Deployment complete!"
 
       - echo "Creating Lambda layer from python-dotenv package..."
-      - aws lambda publish-layer-version --layer-name my-python-dotenv-layer --description "Lambda layer with python-dotenv" --content S3Bucket=s3-doordash-landing,S3Key=python-dotenv.zip --compatible-runtimes python3.11
+      - aws lambda publish-layer-version --layer-name my-python-dotenv-layer --description "Lambda layer with python-dotenv" --content S3Bucket=s3-doordash-landing,S3Key=deployment_package.zip --compatible-runtimes python3.11
       - echo "Lambda layer creation complete!"
 
       # Extract the JSON file from the zip folder
