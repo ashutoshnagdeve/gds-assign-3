@@ -35,3 +35,13 @@ phases:
           --content S3Bucket=s3-doordash-landing,S3Key=python-dotenv.zip \
           --compatible-runtimes python3.11
       - echo "Lambda layer creation complete!"
+
+      # Extract the JSON file from the zip folder
+      - echo "Extracting JSON file from the zip folder..."
+      - unzip -o deployment_package.zip 2024-03-09-raw_input.json -d extracted_files/
+      - echo "JSON file extracted successfully!"
+
+      # Copy the extracted JSON file to the specified directory
+      - echo "Copying 2024-03-09-raw_input.json to doordash-landing/raw_data/"
+      - aws s3 cp extracted_files/2024-03-09-raw_input.json s3://s3-doordash-landing/doordash-landing/raw_data/
+      - echo "File copied successfully!"
