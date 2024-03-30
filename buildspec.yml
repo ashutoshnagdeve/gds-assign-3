@@ -32,6 +32,6 @@ phases:
       - echo "JSON file extracted successfully!"
 
       # Copy the extracted JSON file to the specified directory
-      - echo "Copying 2024-03-09-raw_input.json to doordash-landing/raw_data/"
-      - aws s3 cp extracted_files/2024-03-09-raw_input.json s3://s3-doordash-landing/doordash-landing/raw_data/
+      - echo "Copying 2024-03-09-raw_input.json to s3://s3-doordash-landing/raw_data/"
+      - aws s3 cp extracted_files/2024-03-09-raw_input.json s3://s3-doordash-landing/raw_data/
       - echo "File copied successfully!"
