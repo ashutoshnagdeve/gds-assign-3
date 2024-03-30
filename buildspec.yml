@@ -26,10 +26,6 @@ phases:
       - aws lambda update-function-code --function-name doordash_transform --s3-bucket s3-doordash-landing --s3-key deployment_package.zip
       - echo "Deployment complete!"
 
-      - echo "Creating Lambda layer from python-dotenv package..."
-      - aws lambda publish-layer-version --layer-name my-python-dotenv-layer --description "Lambda layer with python-dotenv" --content S3Bucket=s3-doordash-landing,S3Key=deployment_package.zip --compatible-runtimes python3.11
-      - echo "Lambda layer creation complete!"
-
       # Extract the JSON file from the zip folder
       - echo "Extracting JSON file from the zip folder..."
       - unzip -o deployment_package.zip 2024-03-09-raw_input.json -d extracted_files/
