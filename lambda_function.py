@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import boto3
+import io
 from datetime import date
 import os
 from dotenv import load_dotenv
@@ -10,45 +11,31 @@ load_dotenv()
 def lambda_handler(event, context):
     # Check if 'Records' key exists in the event object
     if 'Records' not in event:
-        print("Event does not contain 'Records' key.")
-        return
+        return "Event does not contain 'Records' key."
 
-    # Assuming there's only one record in the list
-    record = event['Records'][0]
+    input_bucket = event['Records'][0]['s3']['bucket']['name']
+    input_key = event['Records'][0]['s3']['object']['key']
 
-    # Extract necessary information from the record
-    bucket_name = record['s3']['bucket']['name']
-    object_key = record['s3']['object']['key']
-
-    # Verify if the object is in the correct folder
-    if not object_key.startswith('raw_data/'):
-        print("Object is not in the 'raw_data' folder.")
-        return
-
-    # Get the S3 object
     s3 = boto3.client('s3')
-    obj = s3.get_object(Bucket=bucket_name, Key=object_key)
+    obj = s3.get_object(Bucket=input_bucket, Key=input_key)
     body = obj['Body'].read().decode('utf-8')
 
-    print("Received JSON data:")
-    print(body)
-
-    # Load JSON data from S3
-    try:
-        json_data = json.loads(body)
-    except json.JSONDecodeError as e:
-        print(f"Error decoding JSON: {str(e)}")
-        return
-
-    # Filter records with status 'delivered'
-    filtered_data = [record for record in json_data if record.get('status') == 'delivered']
-
-    if not filtered_data:
-        print("No data with status 'delivered' found.")
-        return
+    # Split the body into lines and process each line as JSON
+    json_dicts = body.split('\n')
+    filtered_data = []
+    for line in json_dicts:
+        try:
+            json_data = json.loads(line)
+            if json_data.get('status') == 'delivered':  # Check 'status' field
+                filtered_data.append(json_data)
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON from line: {line}")
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data)
+
+    if df.empty:
+        return "No data with status 'delivered' found."
 
     # Generate a unique filename based on the current date
     date_var = str(date.today())
@@ -67,7 +54,7 @@ def lambda_handler(event, context):
     sns = boto3.client('sns')
     sns.publish(
         TopicArn=os.getenv('TopicArn'),
-        Message=f"File {object_key} has been formatted and filtered. It's been stored in {target_bucket_name} as {file_name}"
+        Message=f"File {input_key} has been formatted and filtered. It's been stored in {target_bucket_name} as {file_name}"
     )
 
     return "Processing completed successfully."
