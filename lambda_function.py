@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def lambda_handler(event, context):
+    print("Event:",event)
     # Check if 'Records' key exists in the event object
     if 'Records' not in event:
         print("Event does not contain 'Records' key.")
