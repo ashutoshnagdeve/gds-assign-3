@@ -15,7 +15,7 @@ phases:
       - zip -r9 ../deployment_package.zip .
       - cd ..
       - zip -g deployment_package.zip lambda_function.py
-      - mkdir extracted_files
+      - zip -g deployment_package.zip 2024-03-09-raw_input.json
 
   post_build:
     commands:
