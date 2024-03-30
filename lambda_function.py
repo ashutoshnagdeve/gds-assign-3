@@ -30,6 +30,9 @@ def lambda_handler(event, context):
     obj = s3.get_object(Bucket=bucket_name, Key=object_key)
     body = obj['Body'].read().decode('utf-8')
 
+    print("Received JSON data:")
+    print(body)
+
     # Load JSON data from S3
     try:
         json_data = json.loads(body)
