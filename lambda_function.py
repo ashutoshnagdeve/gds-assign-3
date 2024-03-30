@@ -15,6 +15,10 @@ def lambda_handler(event, context):
     input_bucket = event['Records'][0]['s3']['bucket']['name']
     input_key = event['Records'][0]['s3']['object']['key']
 
+    # Check if the file is in the correct folder
+    if not input_key.startswith('raw_data/'):
+        return "File is not in the 'raw_data' folder."
+
     s3 = boto3.client('s3')
     obj = s3.get_object(Bucket=input_bucket, Key=input_key)
     body = obj['Body'].read().decode('utf-8')
