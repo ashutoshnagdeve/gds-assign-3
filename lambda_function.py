@@ -20,11 +20,16 @@ def lambda_handler(event, context):
     obj = s3.get_object(Bucket=input_bucket, Key=input_key)
     body = obj['Body'].read().decode('utf-8')
 
-    # Load JSON data from S3
-    json_data = json.loads(body)
-
-    # Filter records with status 'delivered'
-    filtered_data = [record for record in json_data if record.get('status') == 'delivered']
+    # Split the body into lines and process each line as JSON
+    json_dicts = body.split('\n')
+    filtered_data = []
+    for line in json_dicts:
+        try:
+            json_data = json.loads(line)
+            if json_data['status'] == 'delivered':
+                filtered_data.append(json_data)
+        except json.JSONDecodeError:
+            print(f"Failed to decode JSON from line: {line}")
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data)
