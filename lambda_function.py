@@ -1,7 +1,6 @@
 import json
 import pandas as pd
 import boto3
-import io
 from datetime import date
 import os
 from dotenv import load_dotenv
@@ -20,22 +19,20 @@ def lambda_handler(event, context):
     obj = s3.get_object(Bucket=input_bucket, Key=input_key)
     body = obj['Body'].read().decode('utf-8')
 
-    # Split the body into lines and process each line as JSON
-    json_dicts = body.split('\n')
-    filtered_data = []
-    for line in json_dicts:
-        try:
-            json_data = json.loads(line)
-            if json_data.get('status') == 'delivered':  # Check 'status' field
-                filtered_data.append(json_data)
-        except json.JSONDecodeError:
-            print(f"Failed to decode JSON from line: {line}")
+    # Load JSON data from S3
+    try:
+        json_data = json.loads(body)
+    except json.JSONDecodeError as e:
+        return f"Error decoding JSON: {str(e)}"
+
+    # Filter records with status 'delivered'
+    filtered_data = [record for record in json_data if record.get('status') == 'delivered']
+
+    if not filtered_data:
+        return "No data with status 'delivered' found."
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data)
-
-    if df.empty:
-        return "No data with status 'delivered' found."
 
     # Generate a unique filename based on the current date
     date_var = str(date.today())
