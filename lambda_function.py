@@ -22,7 +22,6 @@ def lambda_handler(event, context):
     s3 = boto3.client('s3')
     obj = s3.get_object(Bucket=input_bucket, Key=input_key)
     body = obj['Body'].read()
-    # Assuming the JSON data is separated by '\r\n', adjust if necessary
     json_dicts = body.decode('utf-8').split('\r\n')
 
     df = pd.DataFrame(columns=['id', 'status', 'amount', 'date'])
@@ -35,17 +34,28 @@ def lambda_handler(event, context):
             print(f"Error decoding JSON: {e}")
             continue
 
-    df.to_csv('/tmp/test.csv', sep=',')
-    print('test.csv file created')
-
-    date_var = str(date.today())
-    file_name = f'processed_data/{date_var}_processed_data.csv'
-
+    # Define the S3 bucket and object name for the CSV file
     bucket_name = os.getenv('output_bucket')
-    s3 = boto3.resource('s3')
-    s3.meta.client.copy_object(
-        Bucket=bucket_name,
-        CopySource={'Bucket': 's3-doordash-landing', 'Key': input_key},
-        Key=file_name
-    )
-    print(f'File copied to S3://{bucket_name}/{file_name}')
+    object_name = 'processed_data/processed_data.csv'
+
+    # Download the existing CSV file from S3
+    s3.download_file(bucket_name, object_name, '/tmp/processed_data.csv')
+
+    # Read the existing CSV file into a DataFrame
+    existing_df = pd.read_csv('/tmp/processed_data.csv')
+
+    # Append the new records to the existing DataFrame
+    appended_df = pd.concat([existing_df, df], ignore_index=True)
+
+    # Write the updated DataFrame back to the CSV file
+    appended_df.to_csv('/tmp/processed_data.csv', index=False)
+
+    # Upload the updated CSV file back to S3
+    s3.upload_file('/tmp/processed_data.csv', bucket_name, object_name)
+
+    print('Records appended to the CSV file and uploaded to S3')
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Successfully appended records to CSV and uploaded to S3')
+    }
