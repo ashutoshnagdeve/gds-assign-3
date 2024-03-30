@@ -1,13 +1,18 @@
 import json
 import pandas as pd
 import boto3
-import os
+import io
 from datetime import date
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
 def lambda_handler(event, context):
+    # Check if 'Records' key exists in the event object
+    if 'Records' not in event:
+        return "Event does not contain 'Records' key."
+
     input_bucket = event['Records'][0]['s3']['bucket']['name']
     input_key = event['Records'][0]['s3']['object']['key']
 
@@ -18,30 +23,25 @@ def lambda_handler(event, context):
 
     df = pd.DataFrame(columns=['id', 'status', 'amount', 'date'])
     for line in json_dicts:
-        try:
-            py_dict = json.loads(line)
-            if py_dict['status'] == 'delivered':
-                df.loc[py_dict['id']] = py_dict
-        except KeyError as e:
-            print(f"KeyError: {e} in JSON dictionary")
-
-    # Save filtered data to CSV
-    df.to_csv('/tmp/test.csv', sep=',')
-
-    # Upload CSV to S3
-    date_var = str(date.today())
+        py_dict = json.loads(line)
+        if py_dict['status'] == 'delivered':
+            df.loc[py_dict['id']] = py_dict
+        df.to_csv('/tmp/test.csv',sep = ',')
+        print('test.csv file created')
+        date_var = str(date.today())
     try:
-        file_name = f'processed_data/{date_var}_processed_data.csv'
+        file_name ='processed_data/{}_processed_data.csv'.format(date_var)
     except:
-        file_name = 'processed_data/processed_data.csv'
+            ile_name = 'processed_data/processed_data.csv'
+    lambda_path = '/tmp/test.csv'
     bucket_name = os.getenv('output_bucket')
-    s3_resource = boto3.resource('s3')
-    bucket = s3_resource.Bucket(bucket_name)
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
     bucket.upload_file('/tmp/test.csv', file_name)
-
-    # Send SNS notification
+    
+    # sns to deliver file processed request
     sns = boto3.client('sns')
-    response = sns.publish(
-        TopicArn=os.getenv('TopicArn'),
-        Message=f"File {input_key} has been formatted and filtered. It's been stored in {bucket_name} as {file_name}"
-    )
+    response = sns.publish( \
+    TopicArn=os.getenv('TopicArn'),
+    Message="File {} has been formatted and filtered. Its been stored in \
+    {} as {}".format(input_key,bucket_name,file_name))
