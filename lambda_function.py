@@ -42,14 +42,20 @@ def lambda_handler(event, context):
     date_var = str(date.today())
     file_name = f'processed_data/{date_var}_processed_data.csv'
 
+    print(f"File name: {file_name}")  # Debug print statement
+
     # Write the DataFrame to a CSV file in the Lambda's /tmp directory
     df.to_csv('/tmp/test.csv', index=False)
+
+    print("CSV file saved locally.")  # Debug print statement
 
     # Upload the CSV file to the target S3 bucket
     target_bucket_name = os.getenv('output_bucket')
     s3_target = boto3.resource('s3')
     bucket_target = s3_target.Bucket(target_bucket_name)
     bucket_target.upload_file('/tmp/test.csv', file_name)
+
+    print("CSV file uploaded to S3.")  # Debug print statement
 
     # Notify using SNS
     sns = boto3.client('sns')
