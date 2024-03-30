@@ -26,13 +26,16 @@ def lambda_handler(event, context):
     for line in json_dicts:
         try:
             json_data = json.loads(line)
-            if json_data['status'] == 'delivered':
+            if json_data.get('status') == 'delivered':  # Check 'status' field
                 filtered_data.append(json_data)
         except json.JSONDecodeError:
             print(f"Failed to decode JSON from line: {line}")
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data)
+
+    if df.empty:
+        return "No data with status 'delivered' found."
 
     # Generate a unique filename based on the current date
     date_var = str(date.today())
