@@ -8,33 +8,41 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def lambda_handler(event, context):
-    print("Event:", event)
     # Check if 'Records' key exists in the event object
     if 'Records' not in event:
-        return "Event does not contain 'Records' key."
+        print("Event does not contain 'Records' key.")
+        return
 
-    input_bucket = event['Records'][0]['s3']['bucket']['name']
-    input_key = event['Records'][0]['s3']['object']['key']
+    # Assuming there's only one record in the list
+    record = event['Records'][0]
 
-    # Check if the file is in the correct folder
-    if not input_key.startswith('raw_data/'):
-        return "File is not in the 'raw_data' folder."
+    # Extract necessary information from the record
+    bucket_name = record['s3']['bucket']['name']
+    object_key = record['s3']['object']['key']
 
+    # Verify if the object is in the correct folder
+    if not object_key.startswith('raw_data/'):
+        print("Object is not in the 'raw_data' folder.")
+        return
+
+    # Get the S3 object
     s3 = boto3.client('s3')
-    obj = s3.get_object(Bucket=input_bucket, Key=input_key)
+    obj = s3.get_object(Bucket=bucket_name, Key=object_key)
     body = obj['Body'].read().decode('utf-8')
 
     # Load JSON data from S3
     try:
         json_data = json.loads(body)
     except json.JSONDecodeError as e:
-        return f"Error decoding JSON: {str(e)}"
+        print(f"Error decoding JSON: {str(e)}")
+        return
 
     # Filter records with status 'delivered'
     filtered_data = [record for record in json_data if record.get('status') == 'delivered']
 
     if not filtered_data:
-        return "No data with status 'delivered' found."
+        print("No data with status 'delivered' found.")
+        return
 
     # Create a DataFrame from the filtered data
     df = pd.DataFrame(filtered_data)
@@ -43,12 +51,8 @@ def lambda_handler(event, context):
     date_var = str(date.today())
     file_name = f'processed_data/{date_var}_processed_data.csv'
 
-    print(f"File name: {file_name}")  # Debug print statement
-
     # Write the DataFrame to a CSV file in the Lambda's /tmp directory
     df.to_csv('/tmp/test.csv', index=False)
-
-    print("CSV file saved locally.")  # Debug print statement
 
     # Upload the CSV file to the target S3 bucket
     target_bucket_name = os.getenv('output_bucket')
@@ -56,13 +60,11 @@ def lambda_handler(event, context):
     bucket_target = s3_target.Bucket(target_bucket_name)
     bucket_target.upload_file('/tmp/test.csv', file_name)
 
-    print("CSV file uploaded to S3.")  # Debug print statement
-
     # Notify using SNS
     sns = boto3.client('sns')
     sns.publish(
         TopicArn=os.getenv('TopicArn'),
-        Message=f"File {input_key} has been formatted and filtered. It's been stored in {target_bucket_name} as {file_name}"
+        Message=f"File {object_key} has been formatted and filtered. It's been stored in {target_bucket_name} as {file_name}"
     )
 
     return "Processing completed successfully."
